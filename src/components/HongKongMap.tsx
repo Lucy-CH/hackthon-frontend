@@ -5,7 +5,14 @@ import {
   useApiLoadingStatus,
 } from '@vis.gl/react-google-maps'
 
-function MapContent() {
+import WorkDestinationMarker from '@/components/WorkDestinationMarker'
+import type { Address } from '@/types/address'
+
+interface HongKongMapProps {
+  destination: Address | null
+}
+
+function MapContent({ destination }: HongKongMapProps) {
   const status = useApiLoadingStatus()
 
   if (
@@ -14,7 +21,8 @@ function MapContent() {
   ) {
     return (
       <div role="alert" className="flex h-full items-center justify-center p-6">
-        地图加载失败，请检查网络、API 密钥及 Google Cloud 配置。
+        Unable to load the map. Please check your connection and map
+        configuration.
       </div>
     )
   }
@@ -22,13 +30,14 @@ function MapContent() {
   if (status !== APILoadingStatus.LOADED) {
     return (
       <div role="status" className="flex h-full items-center justify-center">
-        正在加载香港地图…
+        Loading map...
       </div>
     )
   }
 
   return (
     <Map
+      mapId="DEMO_MAP_ID"
       defaultCenter={{ lat: 22.3193, lng: 114.1694 }}
       defaultZoom={12}
       gestureHandling="greedy"
@@ -37,24 +46,26 @@ function MapContent() {
       fullscreenControl
       zoomControl
       style={{ width: '100%', height: '100%' }}
-    />
+    >
+      <WorkDestinationMarker destination={destination} />
+    </Map>
   )
 }
 
-export default function HongKongMap() {
+export default function HongKongMap({ destination }: HongKongMapProps) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
 
   if (!apiKey) {
     return (
       <div role="alert" className="flex h-full items-center justify-center p-6">
-        请在 .env.local 中配置地图密钥，然后重启开发服务。
+        The map API key is missing.
       </div>
     )
   }
 
   return (
     <APIProvider apiKey={apiKey} language="zh-TW" region="HK">
-      <MapContent />
+      <MapContent destination={destination} />
     </APIProvider>
   )
 }
