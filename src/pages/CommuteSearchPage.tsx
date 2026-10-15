@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import HongKongMap from '@/components/HongKongMap'
 import WorkDestinationInput from '@/components/WorkDestinationInput'
@@ -8,6 +8,18 @@ import type { Address } from '@/types/address'
 import { useMutation } from '@tanstack/react-query'
 
 import { getRecommendations } from '@/api/recommendations'
+
+const hkdFormatter = new Intl.NumberFormat('en-HK', {
+  style: 'currency',
+  currency: 'HKD',
+  currencyDisplay: 'code',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+function formatMoney(value: string | null): string {
+  return value === null ? 'Unavailable' : hkdFormatter.format(Number(value))
+}
 
 export default function CommuteSearchPage() {
   const [workDestination, setWorkDestination] = useState<Address | null>(null)
@@ -21,9 +33,16 @@ export default function CommuteSearchPage() {
     budgetAmount > 0 &&
     budgetAmount <= 99_999_999
 
+  const [selectedRentalId, setSelectedRentalId] = useState<number | null>(null)
+
+  const firstCardRef = useRef<HTMLButtonElement>(null)
+
   const recommendation = useMutation({
     mutationFn: getRecommendations,
     retry: false,
+    onSuccess: (data) => {
+      setSelectedRentalId(data.items[0]?.rental_id ?? null)
+    },
   })
 
   const canSearch =
@@ -47,19 +66,82 @@ export default function CommuteSearchPage() {
     recommendation.variables?.work_address_id === workDestination?.id &&
     recommendation.variables?.max_monthly_rent_hkd === budgetAmount
 
+  const result =
+    matchesCurrentInputs && recommendation.isSuccess
+      ? recommendation.data
+      : null
+
+  const selectedRecommendation =
+    result?.items.find((item) => item.rental_id === selectedRentalId) ??
+    result?.items[0] ??
+    null
+
+  useEffect(() => {
+    if (!result?.items.length) {
+      return
+    }
+
+    firstCardRef.current?.focus({ preventScroll: true })
+    firstCardRef.current?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  }, [result])
+
+  const hasResults = Boolean(result?.items.length)
+
   return (
-    <main className="flex h-dvh flex-col bg-slate-50">
-      <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-4">
-        <h1 className="text-xl font-bold text-slate-900">
-          Hong Kong Rent & Commute
-        </h1>
+    <main className="flex min-h-dvh flex-col bg-slate-50 lg:h-dvh">
+      <header
+        className={
+          hasResults
+            ? 'shrink-0 border-b border-slate-200 bg-white px-6 py-4'
+            : 'my-auto w-full px-6 py-12'
+        }
+      >
+        <div className={hasResults ? '' : 'mx-auto max-w-4xl text-center'}>
+          <p className="text-sm font-semibold tracking-wide text-emerald-700">
+            Hong Kong Rent & Commute
+          </p>
 
-        <p className="mt-1 text-sm text-slate-500">
-          Find a home within your budget, with an easier, greener commute.
-        </p>
+          <h1
+            className={
+              hasResults
+                ? 'mt-2 text-xl font-bold text-slate-900'
+                : 'mt-5 text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl'
+            }
+          >
+            {hasResults ? (
+              'Your home search'
+            ) : (
+              <>
+                Find a home.
+                <br />
+                Simplify your commute.
+              </>
+            )}
+          </h1>
 
-        <div className="mt-4 max-w-5xl space-y-2">
-          <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+          <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base">
+            Compare rent and public transport costs to find a home that works
+            for you.
+          </p>
+        </div>
+
+        <div
+          className={
+            hasResults
+              ? 'mt-4 max-w-5xl space-y-3'
+              : 'mx-auto mt-8 max-w-4xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8'
+          }
+        >
+          <div
+            className={
+              hasResults
+                ? 'grid grid-cols-1 items-end gap-4 md:grid-cols-[minmax(0,1fr)_220px_auto]'
+                : 'grid grid-cols-1 items-end gap-5 md:grid-cols-[minmax(0,1fr)_240px]'
+            }
+          >
             <WorkDestinationInput onSelect={setWorkDestination} />
 
             <div className="space-y-2">
@@ -89,7 +171,11 @@ export default function CommuteSearchPage() {
               disabled={!canSearch || recommendation.isPending}
               onClick={handleFindHome}
               aria-busy={recommendation.isPending}
-              className="w-full md:w-auto"
+              className={
+                hasResults
+                  ? 'w-full md:w-auto'
+                  : 'h-11 w-full bg-emerald-700 hover:bg-emerald-800 md:col-span-2'
+              }
             >
               {recommendation.isPending ? 'Finding homes...' : 'Find my home'}
             </Button>
@@ -100,9 +186,18 @@ export default function CommuteSearchPage() {
           </p>
 
           {recommendation.isPending && (
-            <p role="status" className="text-sm text-muted-foreground">
-              Checking public transport routes. This may take a moment.
-            </p>
+            <div role="status" className="space-y-3">
+              <div
+                aria-hidden="true"
+                className="h-1 overflow-hidden rounded-full bg-emerald-100"
+              >
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-emerald-600" />
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Checking public transport routes. This may take a moment.
+              </p>
+            </div>
           )}
 
           {matchesCurrentInputs && recommendation.isError && (
@@ -120,20 +215,120 @@ export default function CommuteSearchPage() {
           )}
         </div>
 
-        {workDestination && (
-          <div className="mt-3 text-sm text-slate-600" role="status">
-            <p>Selected destination: {workDestination.address_zh}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Coordinates: {workDestination.latitude},{' '}
-              {workDestination.longitude}
+        {!hasResults && (
+          <div className="mx-auto mt-6 max-w-4xl text-center text-xs leading-relaxed text-slate-500">
+            <p>
+              Public transport · Arrive by 9:30 AM · 22 commuting days / month
+            </p>
+            <p className="mt-2">
+              Your map and commute options appear after you search.
             </p>
           </div>
         )}
       </header>
 
-      <section aria-label="香港地图" className="min-h-0 flex-1">
-        <HongKongMap destination={workDestination} />
-      </section>
+      {hasResults && (
+        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[400px_minmax(0,1fr)] lg:overflow-hidden">
+          {result && result.items.length > 0 && (
+            <aside
+              aria-label="Rental recommendations"
+              className="min-h-0 space-y-4 bg-slate-50 p-4 lg:overflow-y-auto lg:border-r lg:border-slate-200"
+            >
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {result.items.length} homes within your rent budget
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Shortest commute first · Arrive by 9:30 AM
+                </p>
+              </div>
+
+              {result.items.map((item, index) => {
+                const isSelected =
+                  selectedRecommendation?.rental_id === item.rental_id
+
+                const minutes = Math.ceil(item.commute.duration_seconds / 60)
+                const transfers = item.commute.transfer_count
+
+                return (
+                  <button
+                    key={item.rental_id}
+                    ref={index === 0 ? firstCardRef : undefined}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedRentalId(item.rental_id)}
+                    className={`block w-full rounded-2xl border-2 p-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 ${
+                      isSelected
+                        ? 'border-emerald-700 bg-emerald-50'
+                        : 'border-slate-200 bg-white hover:border-emerald-300'
+                    }`}
+                  >
+                    <span className="flex items-center justify-between text-xs font-semibold text-emerald-800">
+                      <span>
+                        {String(index + 1).padStart(2, '0')} · {item.district}
+                      </span>
+                      {isSelected && <span>Selected</span>}
+                    </span>
+
+                    <span className="mt-3 block text-base font-semibold text-slate-900">
+                      {item.title}
+                    </span>
+
+                    <span className="mt-1 block text-sm text-slate-600">
+                      {item.address}
+                    </span>
+
+                    <span className="mt-4 block text-sm text-slate-600">
+                      About {minutes} min one way ·{' '}
+                      {transfers === 0
+                        ? 'No transfers'
+                        : `${transfers} transfer${transfers === 1 ? '' : 's'}`}
+                    </span>
+
+                    <span className="mt-4 block space-y-2 border-t border-slate-200 pt-3">
+                      <span className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="text-slate-600">Monthly rent</span>
+                        <span className="font-semibold text-slate-900">
+                          {formatMoney(item.monthly_rent_hkd)}
+                        </span>
+                      </span>
+
+                      <span className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="text-slate-600">Est. transport</span>
+                        <span className="font-medium text-slate-900">
+                          {formatMoney(item.estimated_monthly_transport_hkd)}
+                        </span>
+                      </span>
+
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm font-medium text-emerald-800">
+                          Est. total / month
+                        </span>
+                        <span className="text-lg font-bold text-emerald-800">
+                          {formatMoney(item.estimated_monthly_total_hkd)}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+
+              <p className="text-xs leading-relaxed text-slate-500">
+                Historical listing snapshots; availability is not verified.
+                Transport estimates assume 22 commuting days and equal fares in
+                both directions.
+              </p>
+            </aside>
+          )}
+
+          <section
+            aria-label="Commute map"
+            className="min-h-[400px] lg:min-h-0"
+          >
+            <HongKongMap destination={workDestination} />
+          </section>
+        </div>
+      )}
     </main>
   )
 }
