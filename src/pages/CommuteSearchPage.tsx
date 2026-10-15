@@ -90,6 +90,41 @@ export default function CommuteSearchPage() {
 
   const hasResults = Boolean(result?.items.length)
 
+  const emissionsCandidates = (result?.items ?? []).filter((item) => {
+    const value = item.estimated_monthly_co2e_kg
+
+    return (
+      value !== null &&
+      value.trim() !== '' &&
+      Number.isFinite(Number(value)) &&
+      Number(value) >= 0
+    )
+  })
+
+  const hasComparableEmissions =
+    emissionsCandidates.length >= 2 &&
+    new Set(emissionsCandidates.map((item) => item.emission_factor_version))
+      .size === 1
+
+  const lowestMonthlyEmissions = hasComparableEmissions
+    ? Math.min(
+        ...emissionsCandidates.map((item) =>
+          Number(item.estimated_monthly_co2e_kg),
+        ),
+      )
+    : null
+
+  const lowestEmissionRentalIds = new Set(
+    lowestMonthlyEmissions === null
+      ? []
+      : emissionsCandidates
+          .filter(
+            (item) =>
+              Number(item.estimated_monthly_co2e_kg) === lowestMonthlyEmissions,
+          )
+          .map((item) => item.rental_id),
+  )
+
   return (
     <main className="flex min-h-dvh flex-col bg-slate-50 lg:h-dvh">
       <header
@@ -241,6 +276,12 @@ export default function CommuteSearchPage() {
                 <p className="mt-1 text-xs text-slate-500">
                   Shortest commute first · Arrive by 9:30 AM
                 </p>
+                {lowestEmissionRentalIds.size > 0 && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Emissions labels compare available estimates in these
+                    results only.
+                  </p>
+                )}
               </div>
 
               {result.items.map((item, index) => {
@@ -269,6 +310,11 @@ export default function CommuteSearchPage() {
                       </span>
                       {isSelected && <span>Selected</span>}
                     </span>
+                    {lowestEmissionRentalIds.has(item.rental_id) && (
+                      <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        Lowest estimated emissions
+                      </span>
+                    )}
 
                     <span className="mt-3 block text-base font-semibold text-slate-900">
                       {item.title}
@@ -283,6 +329,21 @@ export default function CommuteSearchPage() {
                       {transfers === 0
                         ? 'No transfers'
                         : `${transfers} transfer${transfers === 1 ? '' : 's'}`}
+                    </span>
+                    <span className="mt-3 block rounded-lg bg-emerald-50 px-3 py-2">
+                      <span className="block text-xs font-medium text-emerald-800">
+                        Est. monthly commute emissions
+                      </span>
+
+                      <span className="mt-1 block text-sm font-semibold text-emerald-900">
+                        {item.estimated_monthly_co2e_kg === null
+                          ? 'Unavailable'
+                          : `${Number(item.estimated_monthly_co2e_kg).toFixed(2)} kg CO₂e`}
+                      </span>
+
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                        UK proxy factors · 22 return commutes / month
+                      </span>
                     </span>
 
                     <span className="mt-4 block space-y-2 border-t border-slate-200 pt-3">

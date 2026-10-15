@@ -13,6 +13,10 @@ export interface RecommendationItem {
   estimated_monthly_transport_hkd: string | null
   estimated_monthly_total_hkd: string | null
 
+  estimated_one_way_co2e_kg: string | null
+  estimated_monthly_co2e_kg: string | null
+  emission_factor_version: string
+
   latitude: number
   longitude: number
   listing_url: string
