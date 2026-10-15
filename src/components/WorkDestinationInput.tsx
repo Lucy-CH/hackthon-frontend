@@ -49,7 +49,7 @@ export default function WorkDestinationInput({
   }
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full">
       <label htmlFor={inputId} className="text-sm font-medium">
         Work destination
       </label>
