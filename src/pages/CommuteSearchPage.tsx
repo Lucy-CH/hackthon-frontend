@@ -325,7 +325,10 @@ export default function CommuteSearchPage() {
             aria-label="Commute map"
             className="min-h-[400px] lg:min-h-0"
           >
-            <HongKongMap destination={workDestination} />
+            <HongKongMap
+              destination={workDestination}
+              recommendation={selectedRecommendation}
+            />
           </section>
         </div>
       )}

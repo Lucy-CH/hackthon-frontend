@@ -13,7 +13,8 @@
     ],
     "module": "esnext",
     "types": [
-      "vite/client"
+      "vite/client",
+      "google.maps"
     ],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
