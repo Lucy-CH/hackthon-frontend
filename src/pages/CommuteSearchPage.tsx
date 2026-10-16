@@ -58,6 +58,7 @@ export default function CommuteSearchPage() {
   const [selectedRentalId, setSelectedRentalId] = useState<number | null>(null)
 
   const firstCardRef = useRef<HTMLButtonElement>(null)
+  const routePanelRef = useRef<HTMLElement>(null)
 
   const recommendation = useMutation({
     mutationFn: getRecommendations,
@@ -110,6 +111,13 @@ export default function CommuteSearchPage() {
       inline: 'nearest',
     })
   }, [result])
+
+  useEffect(() => {
+    routePanelRef.current?.scrollTo({
+      top: 0,
+      behavior: 'instant',
+    })
+  }, [selectedRecommendation?.rental_id])
 
   const hasResults = Boolean(result?.items.length)
 
@@ -226,7 +234,10 @@ export default function CommuteSearchPage() {
                 : 'grid grid-cols-1 items-end gap-5 md:grid-cols-[minmax(0,1fr)_240px]'
             }
           >
-            <WorkDestinationInput onSelect={setWorkDestination} />
+            <WorkDestinationInput
+              onSelect={setWorkDestination}
+              disabled={recommendation.isPending}
+            />
 
             <div className="space-y-2">
               <label
@@ -238,6 +249,7 @@ export default function CommuteSearchPage() {
 
               <Input
                 id="rent-budget"
+                disabled={recommendation.isPending}
                 type="number"
                 inputMode="numeric"
                 min={1}
@@ -467,6 +479,7 @@ export default function CommuteSearchPage() {
           )}
 
           <section
+            ref={routePanelRef}
             aria-label="Commute map and route"
             className="min-h-0 bg-slate-50 lg:overflow-y-auto"
           >

@@ -13,6 +13,7 @@ import type { Address } from '@/types/address'
 
 interface WorkDestinationInputProps {
   onSelect: (address: Address | null) => void
+  disabled?: boolean
 }
 
 function getAddressLabel(address: Address): string {
@@ -21,6 +22,7 @@ function getAddressLabel(address: Address): string {
 
 export default function WorkDestinationInput({
   onSelect,
+  disabled = false,
 }: WorkDestinationInputProps) {
   const inputId = useId()
 
@@ -55,6 +57,7 @@ export default function WorkDestinationInput({
       </label>
 
       <Combobox<Address>
+        disabled={disabled}
         items={options}
         value={selectedAddress}
         inputValue={inputValue}

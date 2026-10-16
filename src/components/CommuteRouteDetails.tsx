@@ -1,5 +1,50 @@
 import type { Address } from '@/types/address'
-import type { RecommendationItem } from '@/types/recommendation'
+import type { CommuteStep, RecommendationItem } from '@/types/recommendation'
+
+function mergeWalkingSteps(steps: CommuteStep[]): CommuteStep[] {
+  const merged: CommuteStep[] = []
+
+  for (const step of steps) {
+    const previous = merged[merged.length - 1]
+
+    if (step.travel_mode === 'WALK' && previous?.travel_mode === 'WALK') {
+      previous.distance_meters =
+        previous.distance_meters !== null && step.distance_meters !== null
+          ? previous.distance_meters + step.distance_meters
+          : null
+
+      previous.duration_seconds =
+        previous.duration_seconds !== null && step.duration_seconds !== null
+          ? previous.duration_seconds + step.duration_seconds
+          : null
+    } else {
+      // Copy the step so the original API data stays unchanged.
+      merged.push({ ...step })
+    }
+  }
+
+  return merged.map((step, index) => {
+    if (step.travel_mode !== 'WALK') {
+      return step
+    }
+
+    const nextStep = merged[index + 1]
+    const isLastStep = index === merged.length - 1
+
+    const instruction = isLastStep
+      ? 'Walk to your work destination.'
+      : nextStep?.travel_mode === 'TRANSIT'
+        ? nextStep.departure_stop
+          ? `Walk to ${nextStep.departure_stop}.`
+          : 'Walk to the next boarding stop.'
+        : 'Continue walking to the next point.'
+
+    return {
+      ...step,
+      instruction,
+    }
+  })
+}
 
 interface CommuteRouteDetailsProps {
   recommendation: RecommendationItem
@@ -11,6 +56,7 @@ export default function CommuteRouteDetails({
   destination,
 }: CommuteRouteDetailsProps) {
   const { commute } = recommendation
+  const displaySteps = mergeWalkingSteps(commute.steps)
   const minutes = Math.ceil(commute.duration_seconds / 60)
   const transfers = commute.transfer_count
 
@@ -33,9 +79,9 @@ export default function CommuteRouteDetails({
           : `${transfers} transfer${transfers === 1 ? '' : 's'}`}
       </p>
 
-      {commute.steps.length > 0 ? (
+      {displaySteps.length > 0 ? (
         <ol className="mt-6">
-          {commute.steps.map((step, index) => {
+          {displaySteps.map((step, index) => {
             const isWalking = step.travel_mode === 'WALK'
             const isTransit = step.travel_mode === 'TRANSIT'
 
