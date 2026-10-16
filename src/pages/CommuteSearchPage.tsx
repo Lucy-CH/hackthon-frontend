@@ -4,10 +4,31 @@ import HongKongMap from '@/components/HongKongMap'
 import WorkDestinationInput from '@/components/WorkDestinationInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { Address } from '@/types/address'
 import { useMutation } from '@tanstack/react-query'
-
 import { getRecommendations } from '@/api/recommendations'
+import type { Address } from '@/types/address'
+
+import CommuteRouteDetails from '@/components/CommuteRouteDetails'
+
+type SortOption = 'commute' | 'cost' | 'emissions'
+
+const sortLabels: Record<SortOption, string> = {
+  commute: 'Shortest commute',
+  cost: 'Lowest total cost',
+  emissions: 'Lowest emissions',
+}
+
+function sortableNumber(value: string | null): number {
+  if (value === null || value.trim() === '') {
+    return Number.POSITIVE_INFINITY
+  }
+
+  const number = Number(value)
+
+  return Number.isFinite(number) && number >= 0
+    ? number
+    : Number.POSITIVE_INFINITY
+}
 
 const hkdFormatter = new Intl.NumberFormat('en-HK', {
   style: 'currency',
@@ -24,6 +45,7 @@ function formatMoney(value: string | null): string {
 export default function CommuteSearchPage() {
   const [workDestination, setWorkDestination] = useState<Address | null>(null)
   const [budget, setBudget] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('commute')
 
   const budgetAmount = Number(budget)
 
@@ -41,6 +63,7 @@ export default function CommuteSearchPage() {
     mutationFn: getRecommendations,
     retry: false,
     onSuccess: (data) => {
+      setSortBy('commute')
       setSelectedRentalId(data.items[0]?.rental_id ?? null)
     },
   })
@@ -124,6 +147,32 @@ export default function CommuteSearchPage() {
           )
           .map((item) => item.rental_id),
   )
+
+  const sortedRecommendations = [...(result?.items ?? [])].sort((a, b) => {
+    let aValue: number
+    let bValue: number
+
+    if (sortBy === 'cost') {
+      aValue = sortableNumber(a.estimated_monthly_total_hkd)
+      bValue = sortableNumber(b.estimated_monthly_total_hkd)
+    } else if (sortBy === 'emissions') {
+      aValue = sortableNumber(a.estimated_monthly_co2e_kg)
+      bValue = sortableNumber(b.estimated_monthly_co2e_kg)
+    } else {
+      aValue = a.commute.duration_seconds
+      bValue = b.commute.duration_seconds
+    }
+
+    if (aValue < bValue) return -1
+    if (aValue > bValue) return 1
+
+    // Break ties by commute time, rent, then ID.
+    return (
+      a.commute.duration_seconds - b.commute.duration_seconds ||
+      Number(a.monthly_rent_hkd) - Number(b.monthly_rent_hkd) ||
+      a.rental_id - b.rental_id
+    )
+  })
 
   return (
     <main className="flex min-h-dvh flex-col bg-slate-50 lg:h-dvh">
@@ -273,9 +322,44 @@ export default function CommuteSearchPage() {
                 <h2 className="text-lg font-semibold text-slate-900">
                   {result.items.length} homes within your rent budget
                 </h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  Shortest commute first · Arrive by 9:30 AM
+                <p className="mt-1 text-xs text-slate-500" aria-live="polite">
+                  {sortLabels[sortBy]} first · Arrive by 9:30 AM
                 </p>
+
+                <div className="mt-3">
+                  <label
+                    htmlFor="recommendation-sort"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Sort by
+                  </label>
+
+                  <select
+                    id="recommendation-sort"
+                    value={sortBy}
+                    onChange={(event) => {
+                      const value = event.target.value
+
+                      if (
+                        value === 'commute' ||
+                        value === 'cost' ||
+                        value === 'emissions'
+                      ) {
+                        setSortBy(value)
+                      }
+                    }}
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/20"
+                  >
+                    <option value="commute">Shortest commute</option>
+                    <option value="cost">Lowest total cost</option>
+                    <option
+                      value="emissions"
+                      disabled={!hasComparableEmissions}
+                    >
+                      Lowest emissions
+                    </option>
+                  </select>
+                </div>
                 {lowestEmissionRentalIds.size > 0 && (
                   <p className="mt-1 text-xs text-slate-500">
                     Emissions labels compare available estimates in these
@@ -284,7 +368,7 @@ export default function CommuteSearchPage() {
                 )}
               </div>
 
-              {result.items.map((item, index) => {
+              {sortedRecommendations.map((item, index) => {
                 const isSelected =
                   selectedRecommendation?.rental_id === item.rental_id
 
@@ -383,13 +467,24 @@ export default function CommuteSearchPage() {
           )}
 
           <section
-            aria-label="Commute map"
-            className="min-h-[400px] lg:min-h-0"
+            aria-label="Commute map and route"
+            className="min-h-0 bg-slate-50 lg:overflow-y-auto"
           >
-            <HongKongMap
-              destination={workDestination}
-              recommendation={selectedRecommendation}
-            />
+            <div className="h-[400px]">
+              <HongKongMap
+                destination={workDestination}
+                recommendation={selectedRecommendation}
+              />
+            </div>
+
+            {selectedRecommendation && (
+              <div className="p-4">
+                <CommuteRouteDetails
+                  recommendation={selectedRecommendation}
+                  destination={workDestination}
+                />
+              </div>
+            )}
           </section>
         </div>
       )}

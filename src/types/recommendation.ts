@@ -3,6 +3,27 @@ export interface RecommendationRequest {
   max_monthly_rent_hkd: number
 }
 
+export interface CommuteStep {
+  travel_mode: string
+  instruction: string
+
+  distance_meters: number | null
+  duration_seconds: number | null
+
+  vehicle_type: string | null
+  line_name: string | null
+  line_short_name: string | null
+  headsign: string | null
+
+  departure_stop: string | null
+  arrival_stop: string | null
+
+  departure_time: string | null
+  arrival_time: string | null
+
+  stop_count: number | null
+}
+
 export interface RecommendationItem {
   rental_id: number
   title: string
@@ -32,6 +53,7 @@ export interface RecommendationItem {
       amount: string
     } | null
     encoded_polyline: string | null
+    steps: CommuteStep[]
   }
 }
 
