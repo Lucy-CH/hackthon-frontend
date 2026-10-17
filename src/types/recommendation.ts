@@ -1,6 +1,9 @@
 export interface RecommendationRequest {
   work_address_id: number
   max_monthly_rent_hkd: number
+  include_ai?: boolean
+  preferences?: string
+  ai_recommendation_count?: 1 | 2
 }
 
 export interface CommuteStep {
@@ -57,10 +60,26 @@ export interface RecommendationItem {
   }
 }
 
+export interface AIRecommendation {
+  rental_id: number
+  reason: string
+  tradeoff: string
+}
+
+export interface AIRecommendationResult {
+  status:
+    'disabled' | 'not_configured' | 'no_candidates' | 'success' | 'unavailable'
+  recommendations: AIRecommendation[]
+  considered_count: number
+  message: string | null
+}
+
 export interface RecommendationResponse {
   work_address_id: number
   arrival_time: string
   candidate_count: number
   no_route_count: number
   items: RecommendationItem[]
+  // Optional during rollout against older backend versions.
+  ai?: AIRecommendationResult
 }

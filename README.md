@@ -157,3 +157,24 @@ Do not deploy a public frontend with `127.0.0.1:8000` as its API URL: it points 
 - Map bounds approximate Hong Kong with a rectangle rather than its exact administrative boundary.
 
 References: [Vite environment variables](https://vite.dev/guide/env-and-mode), [Google Maps API key guidance](https://developers.google.com/maps/api-security-best-practices).
+
+## DeepSeek AI picks
+
+Use the backend `add_recommand` branch to enable AI picks. The search form sends
+`include_ai`, optional `preferences` (up to 1,000 characters), and
+`ai_recommendation_count` (1 or 2) to `POST /api/recommendations`.
+
+The results panel shows `data.ai.recommendations` above the complete rental list,
+matching each pick by `rental_id`. Clicking a pick selects its map and commute
+route. Reasons and tradeoffs currently come from the backend in simplified
+Chinese and are rendered as plain text. Sorting still applies to the full list.
+Changes to AI options invalidate the displayed results until a new search.
+
+When AI is unavailable, unconfigured, or absent on an older backend, users can
+still compare all rental results. Turning off AI skips the recommendation call
+on the backend. The HTTP timeout allows 180 seconds for route calculation plus
+AI generation; there are no automatic retries.
+
+Configure `DEEPSEEK_API_KEY` only in the **backend** environment. No DeepSeek key
+belongs in frontend `.env` or `VITE_*` variables. The frontend continues to use
+`VITE_API_BASE_URL` and its separate browser Google Maps key.

@@ -12,7 +12,8 @@ export async function getRecommendations(
     '/api/recommendations',
     payload,
     {
-      timeout: 120_000,
+      // Allow the existing route calculation plus the backend AI deadline (up to 60s).
+      timeout: 180_000,
     },
   )
 

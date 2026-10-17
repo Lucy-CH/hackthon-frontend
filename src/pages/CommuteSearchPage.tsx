@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+import AIRecommendations from '@/components/AIRecommendations'
+import { Textarea } from '@/components/ui/textarea'
 import HongKongMap from '@/components/HongKongMap'
 import WorkDestinationInput from '@/components/WorkDestinationInput'
 import { Button } from '@/components/ui/button'
@@ -45,6 +47,9 @@ function formatMoney(value: string | null): string {
 export default function CommuteSearchPage() {
   const [workDestination, setWorkDestination] = useState<Address | null>(null)
   const [budget, setBudget] = useState('')
+  const [includeAI, setIncludeAI] = useState(true)
+  const [preferences, setPreferences] = useState('')
+  const [pickCount, setPickCount] = useState<1 | 2>(2)
   const [sortBy, setSortBy] = useState<SortOption>('commute')
 
   const budgetAmount = Number(budget)
@@ -57,7 +62,7 @@ export default function CommuteSearchPage() {
 
   const [selectedRentalId, setSelectedRentalId] = useState<number | null>(null)
 
-  const firstCardRef = useRef<HTMLButtonElement>(null)
+  const resultsPanelRef = useRef<HTMLElement>(null)
   const routePanelRef = useRef<HTMLElement>(null)
 
   const recommendation = useMutation({
@@ -83,12 +88,19 @@ export default function CommuteSearchPage() {
     recommendation.mutate({
       work_address_id: workDestination.id,
       max_monthly_rent_hkd: budgetAmount,
+      include_ai: includeAI,
+      preferences: includeAI ? preferences.trim() : '',
+      ai_recommendation_count: pickCount,
     })
   }
 
   const matchesCurrentInputs =
     recommendation.variables?.work_address_id === workDestination?.id &&
-    recommendation.variables?.max_monthly_rent_hkd === budgetAmount
+    recommendation.variables?.max_monthly_rent_hkd === budgetAmount &&
+    recommendation.variables?.include_ai === includeAI &&
+    recommendation.variables?.preferences ===
+      (includeAI ? preferences.trim() : '') &&
+    recommendation.variables?.ai_recommendation_count === pickCount
 
   const result =
     matchesCurrentInputs && recommendation.isSuccess
@@ -105,11 +117,8 @@ export default function CommuteSearchPage() {
       return
     }
 
-    firstCardRef.current?.focus({ preventScroll: true })
-    firstCardRef.current?.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
-    })
+    resultsPanelRef.current?.focus({ preventScroll: true })
+    resultsPanelRef.current?.scrollTo({ top: 0 })
   }, [result])
 
   useEffect(() => {
@@ -281,6 +290,69 @@ export default function CommuteSearchPage() {
             Monthly rent only. Transport costs are calculated separately.
           </p>
 
+          <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-left">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-900">
+              <input
+                type="checkbox"
+                checked={includeAI}
+                onChange={(event) => setIncludeAI(event.target.checked)}
+                disabled={recommendation.isPending}
+                className="size-4 accent-emerald-700"
+              />
+              Get AI picks from homes within my budget
+            </label>
+            {includeAI && (
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                <div>
+                  <label
+                    htmlFor="housing-preferences"
+                    className="mb-2 block text-sm font-medium"
+                  >
+                    What matters to you? (optional)
+                  </label>
+                  <Textarea
+                    id="housing-preferences"
+                    value={preferences}
+                    onChange={(event) => setPreferences(event.target.value)}
+                    disabled={recommendation.isPending}
+                    maxLength={1000}
+                    rows={2}
+                    placeholder="e.g. Lower rent, fewer transfers, less walking"
+                    aria-describedby="ai-preferences-hint"
+                    className="bg-white"
+                  />
+                  <p
+                    id="ai-preferences-hint"
+                    className="mt-1 text-xs text-slate-500"
+                  >
+                    Preferences are sent to DeepSeek with listing summaries.
+                    Avoid personal details. {preferences.length}/1000
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="ai-pick-count"
+                    className="mb-2 block text-sm font-medium"
+                  >
+                    AI picks
+                  </label>
+                  <select
+                    id="ai-pick-count"
+                    value={pickCount}
+                    onChange={(event) =>
+                      setPickCount(event.target.value === '1' ? 1 : 2)
+                    }
+                    disabled={recommendation.isPending}
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus-visible:outline-emerald-700"
+                  >
+                    <option value="1">1 home</option>
+                    <option value="2">2 homes</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
           {recommendation.isPending && (
             <div role="status" className="space-y-3">
               <div
@@ -291,7 +363,9 @@ export default function CommuteSearchPage() {
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Checking public transport routes. This may take a moment.
+                {includeAI
+                  ? 'Checking routes and preparing AI picks. This may take a moment.'
+                  : 'Checking public transport routes. This may take a moment.'}
               </p>
             </div>
           )}
@@ -327,9 +401,17 @@ export default function CommuteSearchPage() {
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[400px_minmax(0,1fr)] lg:overflow-hidden">
           {result && result.items.length > 0 && (
             <aside
+              ref={resultsPanelRef}
+              tabIndex={-1}
               aria-label="Rental recommendations"
               className="min-h-0 space-y-4 bg-slate-50 p-4 lg:overflow-y-auto lg:border-r lg:border-slate-200"
             >
+              <AIRecommendations
+                result={result}
+                requested={recommendation.variables?.include_ai ?? false}
+                selectedRentalId={selectedRecommendation?.rental_id ?? null}
+                onSelect={setSelectedRentalId}
+              />
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   {result.items.length} homes within your rent budget
@@ -390,7 +472,6 @@ export default function CommuteSearchPage() {
                 return (
                   <button
                     key={item.rental_id}
-                    ref={index === 0 ? firstCardRef : undefined}
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setSelectedRentalId(item.rental_id)}
