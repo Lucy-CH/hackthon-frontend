@@ -43,6 +43,13 @@ function formatMoney(value: string | null): string {
   return value === null ? 'Unavailable' : hkdFormatter.format(Number(value))
 }
 
+function formatEmissions(value: string | null): string {
+  const amount = sortableNumber(value)
+  return Number.isFinite(amount)
+    ? `${amount.toLocaleString('en-HK', { maximumFractionDigits: 2 })} kg CO₂e / month`
+    : 'Unavailable'
+}
+
 export default function CommuteSearchPage() {
   const [detailId, setDetailId] = useState<number | null>(() => {
     const match = window.location.hash.match(/^#\/homes\/(\d+)$/)
@@ -578,6 +585,14 @@ export default function CommuteSearchPage() {
                           </span>
                         </span>
                       </span>
+                      <div className="mt-3 rounded-lg bg-emerald-100/60 px-3 py-2 text-sm">
+                        <p className="text-xs text-emerald-800">
+                          Est. commute emissions
+                        </p>
+                        <p className="mt-1 font-semibold text-emerald-900">
+                          {formatEmissions(item.estimated_monthly_co2e_kg)}
+                        </p>
+                      </div>
                       <div className="mt-4 flex items-center justify-between gap-3">
                         <button
                           type="button"
@@ -602,6 +617,8 @@ export default function CommuteSearchPage() {
                   Historical listing snapshots; availability is not verified.
                   Transport estimates assume 22 commuting days and equal fares
                   in both directions.
+                  {' '}Emissions are estimates using proxy factors and 22 return
+                  commutes per month.
                 </p>
               </aside>
             )}
