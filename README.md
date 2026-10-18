@@ -157,3 +157,55 @@ Do not deploy a public frontend with `127.0.0.1:8000` as its API URL: it points 
 - Map bounds approximate Hong Kong with a rectangle rather than its exact administrative boundary.
 
 References: [Vite environment variables](https://vite.dev/guide/env-and-mode), [Google Maps API key guidance](https://developers.google.com/maps/api-security-best-practices).
+
+## DeepSeek AI picks
+
+Use the backend `add_recommand` branch to enable AI picks. The search form sends
+`include_ai`, optional `preferences` (up to 1,000 characters), and
+`ai_recommendation_count` (1 or 2) to `POST /api/recommendations`.
+
+The results panel shows `data.ai.recommendations` above the complete rental list,
+matching each pick by `rental_id`. Clicking a pick selects its map and commute
+route. Reasons and tradeoffs currently come from the backend in simplified
+Chinese and are rendered as plain text. Sorting still applies to the full list.
+Changes to AI options invalidate the displayed results until a new search.
+
+When AI is unavailable, unconfigured, or absent on an older backend, users can
+still compare all rental results. Turning off AI skips the recommendation call
+on the backend. The HTTP timeout allows 180 seconds for route calculation plus
+AI generation; there are no automatic retries.
+
+Configure `DEEPSEEK_API_KEY` only in the **backend** environment. No DeepSeek key
+belongs in frontend `.env` or `VITE_*` variables. The frontend continues to use
+`VITE_API_BASE_URL` and its separate browser Google Maps key.
+
+### Comparison panel
+
+The route area now includes a side-by-side comparison of up to three homes,
+backend-computed differences, per-home AI analyses, and an overall recommendation.
+Users can expand “Choose homes to compare”, select 2–3 homes from the full result set, then
+click “Compare selected homes with AI”. This explicitly calls the AI comparison endpoint, even
+if AI was disabled on the original search. Updated comparisons recalculate
+routes; they may take time and consume Routes/DeepSeek API usage.
+
+Changing the selection hides stale analysis. The table remains usable if AI
+fails; unknown values are shown as unknown. Explanations are rendered as plain
+text. The first selected column is the reference for signed differences.
+
+The comparison panel and its AI conclusion, strengths, tradeoffs and suitability
+analysis are in English, including when user preferences are entered in Chinese.
+Listing titles retain their original source language.
+
+### Property details and on-demand assessment
+
+The search results page is now compact. Open `#/homes/<rental_id>` via **View
+details** for property facts, English AI assessment, comparisons and commute
+steps. Browser Back preserves the current search while the app stays mounted.
+A refreshed detail link loads property facts directly; session storage retains
+only the last search request for optional personalized analysis. Without that
+context, a direct link still works and prompts the user to search first.
+
+The homepage no longer renders full AI reasons or the comparison table.
+Comparison and individual analysis are generated on request in the details page.
+Original listing titles/descriptions retain their source language. Unknown
+bedrooms or area are not guessed, and zero bedrooms is displayed as Studio.

@@ -1,6 +1,9 @@
 export interface RecommendationRequest {
   work_address_id: number
   max_monthly_rent_hkd: number
+  include_ai?: boolean
+  preferences?: string
+  ai_recommendation_count?: 1 | 2
 }
 
 export interface CommuteStep {
@@ -31,6 +34,9 @@ export interface RecommendationItem {
   district: string
 
   monthly_rent_hkd: string
+  bedrooms?: number | null
+  saleable_area_sqft?: string | null
+  property_details?: Record<string, string | null>
   estimated_monthly_transport_hkd: string | null
   estimated_monthly_total_hkd: string | null
 
@@ -57,10 +63,74 @@ export interface RecommendationItem {
   }
 }
 
+export interface AIRecommendation {
+  rental_id: number
+  reason: string
+  tradeoff: string
+}
+
+export interface AIRecommendationResult {
+  status:
+    'disabled' | 'not_configured' | 'no_candidates' | 'success' | 'unavailable'
+  recommendations: AIRecommendation[]
+  considered_count: number
+  message: string | null
+}
+
 export interface RecommendationResponse {
   work_address_id: number
   arrival_time: string
   candidate_count: number
   no_route_count: number
   items: RecommendationItem[]
+  // Optional during rollout against older backend versions.
+  comparison?: ComparisonResponse | null
+  ai?: AIRecommendationResult
 }
+
+export interface ComparisonDifference {
+  rental_id: number
+  baseline_rental_id: number
+  rent_hkd: string
+  commute_seconds: number
+  transfers: number
+  walking_meters: number | null
+  monthly_transport_hkd: string | null
+  monthly_total_hkd: string | null
+  monthly_co2e_kg: string | null
+}
+
+export interface ComparisonResponse {
+  items: RecommendationItem[]
+  differences: ComparisonDifference[]
+  status: string
+  message: string | null
+  narrative: {
+    recommended_rental_id: number
+    conclusion: string
+    analyses: {
+      rental_id: number
+      strengths: string
+      tradeoffs: string
+      suitable_for: string
+    }[]
+  } | null
+}
+
+export interface ComparisonRequest extends RecommendationRequest {
+  rental_ids: number[]
+}
+
+export type RentalDetail = Pick<
+  RecommendationItem,
+  | 'rental_id'
+  | 'title'
+  | 'address'
+  | 'district'
+  | 'monthly_rent_hkd'
+  | 'bedrooms'
+  | 'saleable_area_sqft'
+  | 'property_details'
+  | 'listing_url'
+  | 'fetched_at'
+>
