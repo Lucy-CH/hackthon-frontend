@@ -34,6 +34,9 @@ export interface RecommendationItem {
   district: string
 
   monthly_rent_hkd: string
+  bedrooms?: number | null
+  saleable_area_sqft?: string | null
+  property_details?: Record<string, string | null>
   estimated_monthly_transport_hkd: string | null
   estimated_monthly_total_hkd: string | null
 
@@ -117,3 +120,17 @@ export interface ComparisonResponse {
 export interface ComparisonRequest extends RecommendationRequest {
   rental_ids: number[]
 }
+
+export type RentalDetail = Pick<
+  RecommendationItem,
+  | 'rental_id'
+  | 'title'
+  | 'address'
+  | 'district'
+  | 'monthly_rent_hkd'
+  | 'bedrooms'
+  | 'saleable_area_sqft'
+  | 'property_details'
+  | 'listing_url'
+  | 'fetched_at'
+>

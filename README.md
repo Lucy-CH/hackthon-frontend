@@ -183,11 +183,29 @@ belongs in frontend `.env` or `VITE_*` variables. The frontend continues to use
 
 The route area now includes a side-by-side comparison of up to three homes,
 backend-computed differences, per-home AI analyses, and an overall recommendation.
-Users can expand “选择对比房源”, select 2–3 homes from the full result set, then
-click “AI 比较所选方案”. This explicitly calls the AI comparison endpoint, even
+Users can expand “Choose homes to compare”, select 2–3 homes from the full result set, then
+click “Compare selected homes with AI”. This explicitly calls the AI comparison endpoint, even
 if AI was disabled on the original search. Updated comparisons recalculate
 routes; they may take time and consume Routes/DeepSeek API usage.
 
 Changing the selection hides stale analysis. The table remains usable if AI
 fails; unknown values are shown as unknown. Explanations are rendered as plain
 text. The first selected column is the reference for signed differences.
+
+The comparison panel and its AI conclusion, strengths, tradeoffs and suitability
+analysis are in English, including when user preferences are entered in Chinese.
+Listing titles retain their original source language.
+
+### Property details and on-demand assessment
+
+The search results page is now compact. Open `#/homes/<rental_id>` via **View
+details** for property facts, English AI assessment, comparisons and commute
+steps. Browser Back preserves the current search while the app stays mounted.
+A refreshed detail link loads property facts directly; session storage retains
+only the last search request for optional personalized analysis. Without that
+context, a direct link still works and prompts the user to search first.
+
+The homepage no longer renders full AI reasons or the comparison table.
+Comparison and individual analysis are generated on request in the details page.
+Original listing titles/descriptions retain their source language. Unknown
+bedrooms or area are not guessed, and zero bedrooms is displayed as Studio.

@@ -73,24 +73,6 @@ export default function AIRecommendations({
                   month · {Math.ceil(pick.home.commute.duration_seconds / 60)}{' '}
                   min commute
                 </span>
-                <span className="mt-3 block text-xs font-semibold text-emerald-800">
-                  Why this home
-                </span>
-                <span
-                  lang="zh-Hans"
-                  className="mt-1 block whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700"
-                >
-                  {pick.reason}
-                </span>
-                <span className="mt-3 block text-xs font-semibold text-amber-800">
-                  Things to consider
-                </span>
-                <span
-                  lang="zh-Hans"
-                  className="mt-1 block whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600"
-                >
-                  {pick.tradeoff}
-                </span>
                 <span className="mt-3 block text-xs font-medium text-emerald-700">
                   {selectedRentalId === pick.rental_id
                     ? 'Selected · route shown on map'
@@ -100,8 +82,7 @@ export default function AIRecommendations({
             ))}
           </div>
           <p className="mt-3 text-xs leading-relaxed text-slate-500">
-            AI explanations may be inaccurate. Check the listing details and
-            availability. All matching homes remain below.
+            Open a home's details for the full AI assessment and comparison.
           </p>
         </>
       ) : (

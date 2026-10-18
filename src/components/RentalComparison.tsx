@@ -13,15 +13,16 @@ interface Props {
   result: RecommendationResponse
   request: RecommendationRequest
   onSelect: (id: number) => void
+  initialRentalId?: number
 }
 
 function value(value: string | number | null | undefined, unit = '') {
-  if (value == null || !Number.isFinite(Number(value))) return '未知'
-  return `${Number(value).toLocaleString('zh-HK', { maximumFractionDigits: 2 })}${unit}`
+  if (value == null || !Number.isFinite(Number(value))) return 'Unknown'
+  return `${Number(value).toLocaleString('en-HK', { maximumFractionDigits: 2 })}${unit}`
 }
 
 function difference(amount: string | number | null | undefined, unit: string) {
-  if (amount == null) return '差值未知'
+  if (amount == null) return 'Difference unavailable'
   const number = Number(amount)
   return `${number > 0 ? '+' : ''}${value(amount, unit)}`
 }
@@ -29,62 +30,85 @@ function difference(amount: string | number | null | undefined, unit: string) {
 const metrics: {
   label: string
   read: (item: RecommendationItem) => string
-  delta: keyof ComparisonDifference
+  delta: keyof ComparisonDifference | null
   unit: string
   scale?: number
 }[] = [
   {
-    label: '月租',
+    label: 'Bedrooms',
+    read: (i) =>
+      i.bedrooms == null
+        ? 'Unknown'
+        : i.bedrooms === 0
+          ? 'Studio'
+          : String(i.bedrooms),
+    delta: null,
+    unit: '',
+  },
+  {
+    label: 'Saleable area',
+    read: (i) => value(i.saleable_area_sqft, ' sq ft'),
+    delta: null,
+    unit: '',
+  },
+  {
+    label: 'Monthly rent',
     read: (i) => value(i.monthly_rent_hkd, ' HKD'),
     delta: 'rent_hkd',
     unit: ' HKD',
   },
   {
-    label: '单程通勤',
-    read: (i) => value(i.commute.duration_seconds / 60, ' 分钟'),
+    label: 'One-way commute',
+    read: (i) => value(i.commute.duration_seconds / 60, ' min'),
     delta: 'commute_seconds',
-    unit: ' 分钟',
+    unit: ' min',
     scale: 60,
   },
   {
-    label: '换乘',
-    read: (i) => value(i.commute.transfer_count, ' 次'),
+    label: 'Transfers',
+    read: (i) => value(i.commute.transfer_count, ''),
     delta: 'transfers',
-    unit: ' 次',
+    unit: '',
   },
   {
-    label: '步行距离',
-    read: (i) => value(i.commute.walking_distance_meters, ' 米'),
+    label: 'Walking distance',
+    read: (i) => value(i.commute.walking_distance_meters, ' m'),
     delta: 'walking_meters',
-    unit: ' 米',
+    unit: ' m',
   },
   {
-    label: '预计月交通费',
+    label: 'Est. monthly transport',
     read: (i) => value(i.estimated_monthly_transport_hkd, ' HKD'),
     delta: 'monthly_transport_hkd',
     unit: ' HKD',
   },
   {
-    label: '预计月总支出',
+    label: 'Est. monthly total',
     read: (i) => value(i.estimated_monthly_total_hkd, ' HKD'),
     delta: 'monthly_total_hkd',
     unit: ' HKD',
   },
   {
-    label: '预计月碳排放',
+    label: 'Est. monthly emissions',
     read: (i) => value(i.estimated_monthly_co2e_kg, ' kg CO₂e'),
     delta: 'monthly_co2e_kg',
     unit: ' kg CO₂e',
   },
 ]
 
-export default function RentalComparison({ result, request, onSelect }: Props) {
+export default function RentalComparison({
+  result,
+  request,
+  onSelect,
+  initialRentalId,
+}: Props) {
   const [selected, setSelected] = useState<number[]>(() => {
-    if (result.comparison?.items.length)
+    if (!initialRentalId && result.comparison?.items.length)
       return result.comparison.items.map((i) => i.rental_id)
     const ids = result.ai?.recommendations.map((i) => i.rental_id) ?? []
     return [
       ...new Set([
+        ...(initialRentalId ? [initialRentalId] : []),
         ...ids,
         ...[...result.items]
           .sort(
@@ -121,6 +145,7 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
 
   return (
     <section
+      lang="en"
       aria-labelledby="comparison-heading"
       className="m-4 rounded-2xl border border-emerald-200 bg-white p-4 sm:p-6"
     >
@@ -128,14 +153,15 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
         id="comparison-heading"
         className="text-xl font-semibold text-slate-900"
       >
-        方案对比与推荐结论
+        Compare homes & recommendation
       </h2>
       <p className="mt-2 text-sm text-slate-600">
-        默认对比 AI 精选与租金较低的备选。也可自行选择 2–3 套比较。
+        Compare AI picks with lower-rent alternatives, or choose 2–3 homes
+        yourself.
       </p>
       <details className="mt-4 rounded-lg border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-medium">
-          选择对比房源（已选 {selected.length}/3）
+          Choose homes to compare ({selected.length}/3 selected)
         </summary>
         <div className="mt-3 max-h-56 space-y-2 overflow-auto">
           {result.items.map((item) => (
@@ -178,27 +204,33 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
             })
           }
         >
-          {comparison.isPending ? '正在更新路线并分析…' : 'AI 比较所选方案'}
+          {comparison.isPending
+            ? 'Updating routes and comparing…'
+            : 'Compare selected homes with AI'}
         </Button>
         <span className="text-xs text-slate-500">
-          会重新查询路线并生成 AI 分析。
+          Refreshes routes and generates a new AI comparison.
         </span>
       </div>
       {comparison.isPending && (
         <p role="status" className="mt-3 text-sm">
-          正在比较，请稍候。下表暂为已有数据。
+          Comparing homes. The table shows existing data while updates are
+          loading.
         </p>
       )}
       {customMatches && comparison.isError && (
         <p role="alert" className="mt-3 text-sm text-red-700">
-          比较失败，请重试；房源可能已无路线或服务暂时不可用。现有数据仍可查看。
+          Comparison failed. A route may no longer be available or the service
+          may be temporarily unavailable. Existing data is still shown; please
+          try again.
         </p>
       )}
       {!comparison.isPending && !narrative && (
         <p role="status" className="mt-3 text-sm text-slate-500">
           {selected.length < 2
-            ? '请至少选择两套房源。'
-            : current?.message || '暂无对应的 AI 结论，可点击上方按钮生成。'}
+            ? 'Select at least two homes.'
+            : current?.message ||
+              'No AI conclusion for this selection yet. Use the button above to generate one.'}
         </p>
       )}
       {items.length > 0 && (
@@ -206,17 +238,19 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
           <div
             className="mt-4 overflow-x-auto rounded-lg border border-slate-200"
             role="region"
-            aria-label="房源数据对比表"
+            aria-label="Home comparison table"
             tabIndex={0}
           >
             <table className="w-full min-w-[620px] text-left text-sm">
               <caption className="p-3 text-left text-xs text-slate-500">
-                数值来自房源及路线数据；差值为该方案减去第一列方案，负值代表更少。未知费用不按零计算。
+                Values come from listing and route data. Differences are
+                relative to the first home; negative values mean less. Unknown
+                costs are not treated as zero.
               </caption>
               <thead className="bg-slate-50">
                 <tr>
                   <th scope="col" className="p-3">
-                    对比项
+                    Metric
                   </th>
                   {items.map((i) => (
                     <th
@@ -232,7 +266,7 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
                       </button>
                       {i.rental_id === recommended?.rental_id && (
                         <span className="mt-2 block text-xs text-emerald-700">
-                          AI 优先推荐
+                          AI top choice
                         </span>
                       )}
                     </th>
@@ -246,15 +280,18 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
                       {metric.label}
                     </th>
                     {items.map((item, index) => {
-                      const raw = current?.differences.find(
-                        (d) => d.rental_id === item.rental_id,
-                      )?.[metric.delta]
+                      const raw =
+                        metric.delta === null
+                          ? null
+                          : current?.differences.find(
+                              (d) => d.rental_id === item.rental_id,
+                            )?.[metric.delta]
                       const delta =
                         raw == null ? null : Number(raw) / (metric.scale ?? 1)
                       return (
                         <td key={item.rental_id} className="p-3">
                           <span>{metric.read(item)}</span>
-                          {index > 0 && current && (
+                          {index > 0 && current && metric.delta !== null && (
                             <span className="mt-1 block text-xs text-slate-500">
                               {difference(delta, metric.unit)}
                             </span>
@@ -274,7 +311,7 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
                 aria-live="polite"
               >
                 <h3 className="font-semibold text-emerald-900">
-                  综合结论：优先推荐 #{recommended?.rental_id}{' '}
+                  Overall recommendation: #{recommended?.rental_id}{' '}
                   {recommended?.title}
                 </h3>
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">
@@ -296,13 +333,15 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
                           #{item.rental_id} {item.title}
                         </h3>
                         <dl className="mt-3 space-y-2 text-sm leading-relaxed">
-                          <dt className="font-medium text-emerald-800">优势</dt>
+                          <dt className="font-medium text-emerald-800">
+                            Strengths
+                          </dt>
                           <dd>{analysis.strengths}</dd>
                           <dt className="font-medium text-amber-800">
-                            不足与未知
+                            Tradeoffs & unknowns
                           </dt>
                           <dd>{analysis.tradeoffs}</dd>
-                          <dt className="font-medium">适合谁</dt>
+                          <dt className="font-medium">Best suited to</dt>
                           <dd>{analysis.suitable_for}</dd>
                         </dl>
                       </article>
@@ -313,9 +352,10 @@ export default function RentalComparison({ result, request, onSelect }: Props) {
             </>
           )}
           <p className="mt-4 text-xs leading-relaxed text-slate-500">
-            预算仅限制月租。交通费按每月 22
-            个工作日往返估算；碳排放为代理因子估算，不同版本不比较差值。AI
-            文字仅供参考，请核对数据；历史房源可用性尚未确认。
+            The budget applies to rent only. Transport estimates assume 22
+            return commutes per month. Emissions use proxy factors; differences
+            are not compared across factor versions. Check AI explanations
+            against the data. Historical listing availability is not verified.
           </p>
         </>
       )}
