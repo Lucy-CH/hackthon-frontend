@@ -81,5 +81,39 @@ export interface RecommendationResponse {
   no_route_count: number
   items: RecommendationItem[]
   // Optional during rollout against older backend versions.
+  comparison?: ComparisonResponse | null
   ai?: AIRecommendationResult
+}
+
+export interface ComparisonDifference {
+  rental_id: number
+  baseline_rental_id: number
+  rent_hkd: string
+  commute_seconds: number
+  transfers: number
+  walking_meters: number | null
+  monthly_transport_hkd: string | null
+  monthly_total_hkd: string | null
+  monthly_co2e_kg: string | null
+}
+
+export interface ComparisonResponse {
+  items: RecommendationItem[]
+  differences: ComparisonDifference[]
+  status: string
+  message: string | null
+  narrative: {
+    recommended_rental_id: number
+    conclusion: string
+    analyses: {
+      rental_id: number
+      strengths: string
+      tradeoffs: string
+      suitable_for: string
+    }[]
+  } | null
+}
+
+export interface ComparisonRequest extends RecommendationRequest {
+  rental_ids: number[]
 }

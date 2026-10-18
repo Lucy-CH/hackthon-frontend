@@ -178,3 +178,16 @@ AI generation; there are no automatic retries.
 Configure `DEEPSEEK_API_KEY` only in the **backend** environment. No DeepSeek key
 belongs in frontend `.env` or `VITE_*` variables. The frontend continues to use
 `VITE_API_BASE_URL` and its separate browser Google Maps key.
+
+### Comparison panel
+
+The route area now includes a side-by-side comparison of up to three homes,
+backend-computed differences, per-home AI analyses, and an overall recommendation.
+Users can expand “选择对比房源”, select 2–3 homes from the full result set, then
+click “AI 比较所选方案”. This explicitly calls the AI comparison endpoint, even
+if AI was disabled on the original search. Updated comparisons recalculate
+routes; they may take time and consume Routes/DeepSeek API usage.
+
+Changing the selection hides stale analysis. The table remains usable if AI
+fails; unknown values are shown as unknown. Explanations are rendered as plain
+text. The first selected column is the reference for signed differences.

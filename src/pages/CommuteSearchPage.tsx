@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import RentalComparison from '@/components/RentalComparison'
 import AIRecommendations from '@/components/AIRecommendations'
 import { Textarea } from '@/components/ui/textarea'
 import HongKongMap from '@/components/HongKongMap'
@@ -564,6 +565,13 @@ export default function CommuteSearchPage() {
             aria-label="Commute map and route"
             className="min-h-0 bg-slate-50 lg:overflow-y-auto"
           >
+            {result && recommendation.variables && (
+              <RentalComparison
+                result={result}
+                request={recommendation.variables}
+                onSelect={setSelectedRentalId}
+              />
+            )}
             <div className="h-[400px]">
               <HongKongMap
                 destination={workDestination}
